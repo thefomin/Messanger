@@ -1,1 +1,3 @@
 node_modules
+/src/generated/prisma
+/prisma/__generated__
