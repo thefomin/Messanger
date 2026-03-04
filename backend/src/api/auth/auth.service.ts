@@ -1,5 +1,5 @@
 import * as argon2 from "argon2";
-import jwt from "jsonwebtoken";
+import * as jwt from "jsonwebtoken";
 import { PrismaService } from "../../infra/prisma";
 import { SessionService } from "./session.service";
 import { env } from "../../config/env.config";
@@ -27,7 +27,8 @@ export class AuthService {
 
     const token = jwt.sign(
       { userId: user.id, sessionId },
-      env.JWT_SECRET
+      env.JWT_SECRET,
+      {expiresIn: '7d'}
     );
 
     return { token };
