@@ -1,11 +1,13 @@
+
+
 import Fastify from "fastify";
+import { authRoutes } from "./api/auth/auth.routes";
 
-const app = Fastify({
-  logger: true
+
+export const app = Fastify({
+  logger: true,
 });
 
-app.get("/", async () => {
-  return { status: "ok123" };
-});
+app.get("/", async () => ({ status: "ok123" }));
 
-app.listen({ port: 3000 });
+app.register(authRoutes);
