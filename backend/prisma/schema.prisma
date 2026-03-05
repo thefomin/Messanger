@@ -10,38 +10,110 @@ datasource db {
 }
 
 model User {
-  id        String   @id @default(uuid())
+  id        Int   @id @default(autoincrement())
   email     String   @unique
   username String @unique
   password  String
   createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+  publicKey String?
+
 
   sentMessages Message[] @relation("SentMessages")
+  participants ChatParticipant[]
 
+  posts    Post[]
+  comments Comment[]
+  messageKeys MessageKey[]
   @@map("users")
 }
 
 model Chat {
   id        String   @id @default(uuid())
   createdAt DateTime @default(now()) @map("created_at")
-
+  participants ChatParticipant[]
   messages Message[]
 
   @@map("chats")
 }
 
+model ChatParticipant {
+  id     String @id @default(uuid())
+  chatId String
+  userId Int
+
+  chat Chat @relation(fields: [chatId], references: [id])
+  user User @relation(fields: [userId], references: [id])
+
+  @@unique([chatId, userId])
+  @@map("chat_participants")
+}
+
 model Message {
   id        String   @id @default(uuid())
 
-  content   String
+  ciphertext   String
+  encryptedKey String
+
   createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+  isEdited  Boolean  @default(false) @map("is_edited")
 
   chatId    String @map("chat_id")
-  senderId  String @map("sender_id")
+  senderId  Int @map("sender_id")
+  parentMessageId String? @map("parent_message_id")
 
   chat   Chat @relation(fields: [chatId], references: [id])
   sender User @relation("SentMessages", fields: [senderId], references: [id])
 
+  parent   Message?  @relation("MessageThread", fields: [parentMessageId], references: [id])
+  replies  Message[] @relation("MessageThread")
+  keys MessageKey[]
   @@index([chatId, createdAt])
+  @@index([parentMessageId])
   @@map("messages")
+}
+
+model MessageKey {
+  id        String   @id @default(uuid())
+  messageId String
+  userId    Int
+  encryptedKey String
+
+  message Message @relation(fields: [messageId], references: [id])
+  user    User    @relation(fields: [userId], references: [id])
+}
+
+model Post {
+  id        String   @id @default(uuid())
+  content   String
+  createdAt DateTime @default(now())
+
+  authorId  Int
+  author    User     @relation(fields: [authorId], references: [id])
+
+  comments  Comment[]
+
+  @@index([createdAt])
+  @@map("posts")
+}
+
+model Comment {
+  id        String   @id @default(uuid())
+  content   String
+  createdAt DateTime @default(now())
+
+  postId    String
+  authorId  Int
+  parentCommentId String?
+
+  post   Post @relation(fields: [postId], references: [id])
+  author User @relation(fields: [authorId], references: [id])
+
+  parent   Comment?  @relation("CommentThread", fields: [parentCommentId], references: [id])
+  replies  Comment[] @relation("CommentThread")
+
+  @@index([postId, createdAt])
+  @@index([parentCommentId])
+  @@map("comments")
 }
