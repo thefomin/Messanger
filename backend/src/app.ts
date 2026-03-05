@@ -1,13 +1,9 @@
+import Fastify from "fastify"
+import websocket from "@fastify/websocket"
+import { ApiModule } from "./api/api.module"
 
+export const app = Fastify({ logger: true })
 
-import Fastify from "fastify";
-import { authRoutes } from "./api/auth/auth.routes";
+app.register(websocket)
 
-
-export const app = Fastify({
-  logger: true,
-});
-
-app.get("/", async () => ({ status: "ok123" }));
-
-app.register(authRoutes);
+ApiModule(app)
