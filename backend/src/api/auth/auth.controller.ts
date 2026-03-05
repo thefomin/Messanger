@@ -1,44 +1,45 @@
-import { FastifyReply, FastifyRequest } from "fastify";
-import { AuthService } from "./auth.service";
-import { LoginDto, RegisterDto } from "./auth.dto";
+import { FastifyReply, FastifyRequest } from "fastify"
+import { AuthService } from "./auth.service"
+import { LoginDto, RegisterDto } from "./auth.dto"
 
 export class AuthController {
-    public constructor(
-        private readonly authService: AuthService
-  ) {}
+	public constructor(private readonly authService: AuthService) {}
 
-  public register = async (
-    req: FastifyRequest<{ Body: RegisterDto }>,
-    reply: FastifyReply
-  ) => {
-    const { email, username, password } = req.body;
+	public register = async (
+		req: FastifyRequest<{ Body: RegisterDto }>,
+		reply: FastifyReply,
+	) => {
+		const { email, username, password } = req.body
 
-    const user = await this.authService.register(
-      email,
-      username,
-      password
-    );
+		if (!email || !username || !password) {
+			reply
+				.status(401)
+				.send({ error: "Email, username and password are required" })
+		}
 
-    reply.send(user);
-  };
+		const user = await this.authService.register(email, username, password)
 
-  public login = async (
-    req: FastifyRequest<{ Body: LoginDto }>,
-    reply: FastifyReply
-  ) => {
-    const { email, password } = req.body;
+		reply.send(user)
+	}
 
-    const result = await this.authService.login(
-      email,
-      password
-    );
+	public login = async (
+		req: FastifyRequest<{ Body: LoginDto }>,
+		reply: FastifyReply,
+	) => {
+		const { email, password } = req.body
 
-    reply.send(result);
-  };
+		if (!email || !password) {
+			reply.status(401).send({ error: "Email and password are required" })
+		}
 
-  public logout = async (req: any, reply: FastifyReply) => {
-    await this.authService.logout(req.user.sessionId);
+		const result = await this.authService.login(email, password)
 
-    reply.send({ ok: true });
-  };
+		reply.send(result)
+	}
+
+	public logout = async (req: any, reply: FastifyReply) => {
+		await this.authService.logout(req.user.sessionId)
+
+		reply.send({ ok: true })
+	}
 }
