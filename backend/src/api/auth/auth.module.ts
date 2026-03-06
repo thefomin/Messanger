@@ -9,6 +9,6 @@ export async function authModule(app: FastifyInstance) {
 
 	app.post("/register", controller.register)
 	app.post("/login", controller.login)
-
+	app.post("/refresh", controller.refresh)
 	app.post("/logout", { preHandler: AuthMiddleware.verify }, controller.logout)
 }
