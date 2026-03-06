@@ -17,6 +17,10 @@ export class SessionService {
 		return redis.get(this.PREFIX + sessionId)
 	}
 
+	static async get(sessionId: string) {
+		return redis.get(this.PREFIX + sessionId)
+	}
+
 	static async delete(sessionId: string) {
 		await redis.del(this.PREFIX + sessionId)
 	}
