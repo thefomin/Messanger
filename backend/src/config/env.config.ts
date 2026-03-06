@@ -7,4 +7,5 @@ export const env = {
 	PORT: process.env.HTTP_PORT || 3000,
 	HOST: process.env.HTTP_HOST!,
 	DATABASE_URI: process.env.DATABASE_URI!,
+	JWT_REFRESH_SECRET: process.env.JWT_REFRESH_SECRET!,
 }
