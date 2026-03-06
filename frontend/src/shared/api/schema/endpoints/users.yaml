@@ -1,0 +1,72 @@
+schemas:
+  User:
+    type: object
+    properties:
+      id:
+        type: integer
+
+      email:
+        type: string
+
+      username:
+        type: string
+
+      publicKey:
+        type: string
+        nullable: true
+
+      createdAt:
+        type: string
+        format: date-time
+
+getUserByUsername:
+  summary: Get user by username
+  operationId: getUserByUsername
+  security:
+    - sessionAuth: []
+
+  parameters:
+    - name: username
+      in: query
+      required: true
+      schema:
+        type: string
+
+  responses:
+    "200":
+      description: User found
+      content:
+        application/json:
+          schema:
+            $ref: "../shared/schema.yaml#/schemas/User"
+    "404":
+      $ref: "../shared/responses.yaml#/NotFoundError"
+
+searchUsers:
+  summary: Search users by username
+  operationId: searchUsers
+  security:
+    - sessionAuth: []
+  parameters:
+    - name: query
+      in: query
+      required: true
+      schema:
+        type: string
+    - name: limit
+      in: query
+      required: false
+      schema:
+        type: integer
+        default: 10
+  responses:
+    "200":
+      description: Users found
+      content:
+        application/json:
+          schema:
+            type: array
+            items:
+              $ref: "../shared/schema.yaml#/schemas/User"
+    "400":
+      $ref: "../shared/responses.yaml#/BadRequestError"

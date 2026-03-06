@@ -1,0 +1,91 @@
+schemas:
+  Message:
+    type: object
+    properties:
+      id:
+        type: string
+      ciphertext:
+        type: string
+      encryptedKey:
+        type: string
+      parentMessageId:
+        type: string
+        nullable: true
+      senderId:
+        type: integer
+      chatId:
+        type: string
+      createdAt:
+        type: string
+        format: date-time
+      updatedAt:
+        type: string
+        format: date-time
+      isEdited:
+        type: boolean
+
+getMessages:
+  summary: Get messages of a chat
+  operationId: getMessages
+  security:
+    - sessionAuth: []
+  parameters:
+    - name: chatId
+      in: query
+      required: true
+      schema:
+        type: string
+        format: uuid
+  responses:
+    "200":
+      description: List of messages in the chat
+      content:
+        application/json:
+          schema:
+            type: array
+            items:
+              $ref: "#/schemas/Message"
+    "400":
+      $ref: "../shared/responses.yaml#/BadRequestError"
+    "401":
+      $ref: "../shared/responses.yaml#/UnauthorizedError"
+    "404":
+      $ref: "../shared/responses.yaml#/NotFoundError"
+
+sendDirectMessage:
+  summary: Send direct message
+  operationId: sendDirectMessage
+  security:
+    - sessionAuth: []
+
+  requestBody:
+    required: true
+    content:
+      application/json:
+        schema:
+          type: object
+          required:
+            - recipientId
+            - ciphertext
+            - encryptedKey
+          properties:
+            recipientId:
+              type: integer
+            ciphertext:
+              type: string
+            encryptedKey:
+              type: string
+            parentMessageId:
+              type: string
+              nullable: true
+
+  responses:
+    "201":
+      description: Message sent
+      content:
+        application/json:
+          schema:
+            $ref: "#/schemas/Message"
+
+    "400":
+      $ref: "../shared/responses.yaml#/BadRequestError"

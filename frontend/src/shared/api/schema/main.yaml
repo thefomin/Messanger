@@ -1,0 +1,41 @@
+openapi: 3.0.0
+info:
+  title: Messanger API
+  description: API for collaborative whiteboard + auth service (Redis sessions)
+  version: 1.0.0
+
+components:
+  securitySchemes:
+    sessionAuth:
+      type: apiKey
+      in: cookie
+      name: sid # имя cookie для Redis-сессии
+
+paths:
+  /auth/register:
+    post:
+      $ref: "./endpoints/auth.yaml#/register"
+
+  /auth/login:
+    post:
+      $ref: "./endpoints/auth.yaml#/login"
+
+  /auth/logout:
+    post:
+      $ref: "./endpoints/auth.yaml#/logout"
+
+  /users/by-username:
+    get:
+      $ref: "./endpoints/users.yaml#/getUserByUsername"
+
+  /users/search:
+    get:
+      $ref: "./endpoints/users.yaml#/searchUsers"
+
+  /chats:
+    get:
+      $ref: "./endpoints/chats.yaml#/getUserChats"
+
+  /messages/direct:
+    post:
+      $ref: "./endpoints/messages.yaml#/sendDirectMessage"

@@ -1,0 +1,63 @@
+schemas:
+  Chat:
+    type: object
+    properties:
+      id:
+        type: string
+        format: uuid
+
+      createdAt:
+        type: string
+        format: date-time
+
+      participants:
+        type: array
+        items:
+          $ref: "#/schemas/ChatParticipant"
+
+      messages:
+        type: array
+        items:
+          $ref: "#/schemas/LastMessage"
+
+  ChatParticipant:
+    type: object
+    properties:
+      id:
+        type: string
+
+      user:
+        $ref: "../shared/schema.yaml#/schemas/User"
+
+  LastMessage:
+    type: object
+    properties:
+      id:
+        type: string
+
+      ciphertext:
+        type: string
+
+      senderId:
+        type: integer
+
+      createdAt:
+        type: string
+        format: date-time
+
+getUserChats:
+  summary: Get chats of the authenticated user
+  operationId: getUserChats
+  security:
+    - sessionAuth: []
+  responses:
+    "200":
+      description: List of user's chats
+      content:
+        application/json:
+          schema:
+            type: array
+            items:
+              $ref: "#/schemas/Chat"
+    "401":
+      $ref: "../shared/responses.yaml#/UnauthorizedError"

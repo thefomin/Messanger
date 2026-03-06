@@ -1,0 +1,20 @@
+schemas:
+  User:
+    type: object
+    properties:
+      id:
+        type: integer
+
+      email:
+        type: string
+
+      username:
+        type: string
+
+      publicKey:
+        type: string
+        nullable: true
+
+      createdAt:
+        type: string
+        format: date-time

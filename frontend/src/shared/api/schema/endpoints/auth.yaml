@@ -1,0 +1,105 @@
+schemas:
+  UserResponse:
+    type: object
+    required:
+      - id
+      - email
+      - username
+      - createdAt
+    properties:
+      id:
+        type: integer
+      email:
+        type: string
+      username:
+        type: string
+      createdAt:
+        type: string
+        format: date-time
+
+  RegisterRequest:
+    type: object
+    required:
+      - email
+      - username
+      - password
+    properties:
+      email:
+        type: string
+        format: email
+      username:
+        type: string
+      password:
+        type: string
+        format: password
+
+  LoginRequest:
+    type: object
+    required:
+      - email
+      - password
+    properties:
+      email:
+        type: string
+        format: email
+      password:
+        type: string
+        format: password
+
+  AuthResponse:
+    type: object
+    required:
+      - token
+    properties:
+      token:
+        type: string
+
+register:
+  summary: Register new user
+  operationId: registerUser
+
+  requestBody:
+    required: true
+    content:
+      application/json:
+        schema:
+          $ref: "#/schemas/RegisterRequest"
+  responses:
+    "201":
+      description: User created successfully
+      content:
+        application/json:
+          schema:
+            $ref: "#/schemas/UserResponse"
+    "400":
+      $ref: "../shared/responses.yaml#/BadRequestError"
+
+login:
+  summary: Login user
+  operationId: loginUser
+
+  requestBody:
+    required: true
+    content:
+      application/json:
+        schema:
+          $ref: "#/schemas/LoginRequest"
+  responses:
+    "200":
+      description: JWT token
+      content:
+        application/json:
+          schema:
+            $ref: "#/schemas/AuthResponse"
+    "400":
+      $ref: "../shared/responses.yaml#/BadRequestError"
+
+logout:
+  summary: Logout user
+  operationId: logoutUser
+  security:
+    - sessionAuth: []
+
+  responses:
+    "204":
+      description: User logged out successfully
