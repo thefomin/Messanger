@@ -29,11 +29,18 @@ export class AuthController {
 		const { email, password } = req.body
 
 		if (!email || !password) {
-			reply.status(401).send({ error: "Email and password are required" })
+			reply.status(400).send({ error: "Email and password are required" })
 		}
 
 		const result = await this.authService.login(email, password)
 
+		reply.setCookie("refreshToken", result.refreshToken, {
+			httpOnly: true,
+			secure: process.env.NODE_ENV === "production",
+			path: "/auth/refresh",
+			sameSite: "strict",
+			maxAge: 60 * 60 * 24 * 7, // 7 дней
+		})
 		reply.send(result)
 	}
 
@@ -41,5 +48,16 @@ export class AuthController {
 		await this.authService.logout(req.user.sessionId)
 
 		reply.send({ ok: true })
+	}
+
+	public refresh = async (req: FastifyRequest, reply: FastifyReply) => {
+		const refreshToken = req.cookies?.refreshToken
+		if (!refreshToken) {
+			reply.status(401).send({ error: "Refresh token is required" })
+			return
+		}
+
+		const result = await this.authService.refresh(refreshToken)
+		reply.send(result) // возвращаем новый access token
 	}
 }
