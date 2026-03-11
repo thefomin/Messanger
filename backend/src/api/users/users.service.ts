@@ -8,6 +8,15 @@ export class UsersService {
 		return existingUser
 	}
 
+	public async getUserById(userId: number) {
+		const user = await PrismaService.user.findUnique({
+			where: { id: userId },
+			select: { id: true, username: true },
+		})
+
+		return user
+	}
+
 	public async searchUsersByUsername(username?: string, limit: number = 20) {
 		const users = await PrismaService.user.findMany({
 			where: {
