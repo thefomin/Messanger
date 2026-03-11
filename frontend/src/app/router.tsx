@@ -18,10 +18,18 @@ export const router = createBrowserRouter([
 			{
 				// loader: protectedLoader,
 
-				Component: ProtectedRoute,
+				element: (
+					<>
+						<ProtectedRoute />
+					</>
+				),
 				children: [
 					{
 						path: ROUTES.HOME,
+						lazy: () => import("@/features/chats/chats.page"),
+					},
+					{
+						path: ROUTES.RECIPIENT_ID,
 						lazy: () => import("@/features/chats/chats.page"),
 					},
 				],
