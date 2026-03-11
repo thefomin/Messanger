@@ -13,13 +13,28 @@ export class AuthController {
 
 		if (!email || !username || !password) {
 			reply
-				.status(401)
+				.status(400)
 				.send({ error: "Email, username and password are required" })
+			return
 		}
 
-		const user = await this.authService.register(email, username, password)
+		const { accessToken, refreshToken, user } = await this.authService.register(
+			email,
+			username,
+			password,
+		)
 
-		reply.send(user)
+		// ставим refreshToken в HTTP-only cookie
+		reply.setCookie("refreshToken", refreshToken, {
+			httpOnly: true,
+			secure: process.env.NODE_ENV === "production",
+			path: "/",
+			sameSite: "lax",
+			maxAge: 60 * 60 * 24 * 7, // 7 дней
+		})
+
+		// возвращаем accessToken и данные пользователя
+		reply.send({ accessToken, user })
 	}
 
 	public login = async (
@@ -27,37 +42,55 @@ export class AuthController {
 		reply: FastifyReply,
 	) => {
 		const { email, password } = req.body
-
 		if (!email || !password) {
 			reply.status(400).send({ error: "Email and password are required" })
+			return
 		}
 
-		const result = await this.authService.login(email, password)
+		const { accessToken, refreshToken, user } = await this.authService.login(
+			email,
+			password,
+		)
 
-		reply.setCookie("refreshToken", result.refreshToken, {
+		// ставим refreshToken в HTTP-only cookie
+		reply.setCookie("refreshToken", refreshToken, {
 			httpOnly: true,
 			secure: process.env.NODE_ENV === "production",
-			path: "/auth/refresh",
-			sameSite: "strict",
+			path: "/",
+			sameSite: "lax",
 			maxAge: 60 * 60 * 24 * 7, // 7 дней
 		})
-		reply.send(result)
+
+		reply.send({ accessToken, user })
 	}
 
 	public logout = async (req: any, reply: FastifyReply) => {
 		await this.authService.logout(req.user.sessionId)
-
 		reply.send({ ok: true })
 	}
 
 	public refresh = async (req: FastifyRequest, reply: FastifyReply) => {
-		const refreshToken = req.cookies?.refreshToken
-		if (!refreshToken) {
+		const oldRefreshToken = req.cookies?.refreshToken
+		if (!oldRefreshToken) {
 			reply.status(401).send({ error: "Refresh token is required" })
 			return
 		}
 
-		const result = await this.authService.refresh(refreshToken)
-		reply.send(result) // возвращаем новый access token
+		try {
+			const { accessToken, refreshToken } =
+				await this.authService.refresh(oldRefreshToken)
+
+			reply.setCookie("refreshToken", refreshToken, {
+				httpOnly: true,
+				secure: process.env.NODE_ENV === "production",
+				path: "/",
+				sameSite: "lax",
+				maxAge: 60 * 60 * 24 * 7,
+			})
+
+			reply.send({ accessToken })
+		} catch (err) {
+			reply.status(401).send({ error: "Invalid refresh token" })
+		}
 	}
 }

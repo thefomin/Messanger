@@ -3,7 +3,7 @@ import { AuthController } from "./auth.controller"
 import { AuthService } from "./auth.service"
 import { AuthMiddleware } from "@/shared/auth.middleware"
 
-export async function authModule(app: FastifyInstance) {
+export async function AuthModule(app: FastifyInstance) {
 	const authService = new AuthService()
 	const controller = new AuthController(authService)
 
