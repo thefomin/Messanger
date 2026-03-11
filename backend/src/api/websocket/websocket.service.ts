@@ -186,17 +186,14 @@ export class WebSocketService {
 			}
 
 			// Рассылаем всем подписанным на этот чат (включая отправителя)
-			this.broadcastToChat(chatId, messageEvent)
+			// this.broadcastToChat(chatId, messageEvent)
 
 			// Инвалидация списка чатов для всех соединений участников чата
 			// Для этого нужно получить всех участников чата
 			const chat = await this.chatsService.getChatById(chatId)
 			if (chat) {
 				for (const participant of chat.participants) {
-					this.broadcastToUser(participant.userId, {
-						type: WebSocketEnum.INVALIDATE,
-						payload: { entity: ["chats", "list"] },
-					})
+					this.broadcastToUser(participant.userId, messageEvent)
 				}
 			}
 		} catch (error) {
@@ -268,6 +265,30 @@ export class WebSocketService {
 					type: WebSocketEnum.USERS_SEARCH_RESULT,
 					requestId,
 					payload: { users },
+				}),
+			)
+		} catch (error) {
+			this.sendError(socket, this.getErrorMessage(error), requestId)
+		}
+	}
+
+	public async handleGetUserById(
+		socket: WebSocket,
+		payload: any,
+		requestId?: string,
+	) {
+		try {
+			const { userId } = payload
+			if (!userId) throw new Error("userId required")
+
+			const user = await this.usersService.getUserById(Number(userId))
+			if (!user) throw new Error("User not found")
+
+			socket.send(
+				JSON.stringify({
+					type: WebSocketEnum.GET_USER_BY_ID,
+					requestId,
+					payload: { user },
 				}),
 			)
 		} catch (error) {
