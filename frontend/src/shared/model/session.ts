@@ -4,7 +4,7 @@ import { createGStore } from "create-gstore"
 import { publicFetchClient } from "../api/instance.api"
 
 type Session = {
-	id: string
+	userId: number
 	email: string
 	exp: number
 	iat: number
@@ -28,44 +28,59 @@ export const useSession = createGStore(() => {
 	}
 
 	const session = token ? jwtDecode<Session>(token) : null
-
+	console.log("session " + JSON.stringify(session))
 	const refreshToken = async () => {
+		console.log("refreshToken called, current token:", token)
 		if (!token) {
+			console.log("No token, returning null")
 			return null
 		}
 
 		const session = jwtDecode<Session>(token)
-
-		if (session.exp < Date.now() / 1000) {
+		const now = Date.now() / 1000
+		console.log("Current time (s):", now, "Token exp:", session.exp)
+		const EXPIRY_BUFFER = 30
+		if (session.exp - EXPIRY_BUFFER < now) {
+			console.log("Token expired, attempting refresh")
 			if (!refreshTokenPromise) {
+				console.log("Starting refresh token request")
 				refreshTokenPromise = publicFetchClient
 					.POST("/auth/refresh")
-					.then((r) => r.data?.accessToken ?? null)
+					.then((r) => {
+						console.log("Refresh response:", r)
+						return r.data?.accessToken ?? null
+					})
 					.then((newToken) => {
+						console.log("New token from refresh:", newToken)
 						if (newToken) {
 							login(newToken)
 							return newToken
 						} else {
+							console.log("Refresh returned no token, logging out")
 							logout()
 							return null
 						}
 					})
+					.catch((err) => {
+						console.error("Refresh request failed:", err)
+						logout()
+						return null
+					})
 					.finally(() => {
 						refreshTokenPromise = null
 					})
+			} else {
+				console.log("Refresh already in progress, waiting")
 			}
 
 			const newToken = await refreshTokenPromise
-
-			if (newToken) {
-				return newToken
-			} else {
-				return null
-			}
+			console.log("Returning token after refresh:", newToken)
+			return newToken
+		} else {
+			console.log("Token not expired, returning existing token")
+			return token
 		}
-
-		return token
 	}
 
-	return { refreshToken, login, logout, session }
+	return { refreshToken, login, logout, session, token }
 })
