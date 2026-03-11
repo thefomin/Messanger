@@ -135,6 +135,9 @@ export class WebSocketController {
 				case WebSocketEnum.SEARCH_USERS:
 					await this.wsService.handleSearchUsers(connection, payload, requestId)
 					break
+				case WebSocketEnum.GET_USER_BY_ID:
+					await this.wsService.handleGetUserById(connection, payload, requestId)
+					break
 				case WebSocketEnum.SUBSCRIBE_TO_CHAT:
 					await this.wsService.handleSubscribe(
 						connection,
