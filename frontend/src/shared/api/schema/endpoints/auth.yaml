@@ -5,7 +5,7 @@ schemas:
       - id
       - email
       - username
-      - createdAt
+      - publicKey
     properties:
       id:
         type: integer
@@ -13,9 +13,8 @@ schemas:
         type: string
       username:
         type: string
-      createdAt:
+      publicKey:
         type: string
-        format: date-time
 
   RegisterRequest:
     type: object
@@ -51,7 +50,17 @@ schemas:
     required:
       - token
     properties:
-      token:
+      accessToken:
+        type: string
+      user:
+        $ref: "#/schemas/UserResponse"
+
+  RefreshResponse:
+    type: object
+    required:
+      - accessToken
+    properties:
+      accessToken:
         type: string
 
 register:
@@ -70,7 +79,7 @@ register:
       content:
         application/json:
           schema:
-            $ref: "#/schemas/UserResponse"
+            $ref: "#/schemas/AuthResponse"
     "400":
       $ref: "../shared/responses.yaml#/BadRequestError"
 
@@ -103,3 +112,22 @@ logout:
   responses:
     "204":
       description: User logged out successfully
+
+refresh:
+  summary: Refresh access token
+  operationId: refreshToken
+
+  responses:
+    "200":
+      description: New access token
+      content:
+        application/json:
+          schema:
+            $ref: "#/schemas/RefreshResponse"
+
+    "401":
+      description: Refresh token invalid or expired
+      content:
+        application/json:
+          schema:
+            $ref: "../shared/responses.yaml#/UnauthorizedError"

@@ -1,7 +1,7 @@
 openapi: 3.0.0
 info:
   title: Messanger API
-  description: API for collaborative messaging + auth service (Redis sessions)
+  description: API for collaborative whiteboard + auth service (Redis sessions)
   version: 1.0.0
 
 components:
@@ -9,7 +9,7 @@ components:
     sessionAuth:
       type: apiKey
       in: cookie
-      name: sid
+      name: sid # имя cookie для Redis-сессии
 
 paths:
   /auth/register:
@@ -23,3 +23,6 @@ paths:
   /auth/logout:
     post:
       $ref: "./endpoints/auth.yaml#/logout"
+  /auth/refresh:
+    post:
+      $ref: "./endpoints/auth.yaml#/refresh"

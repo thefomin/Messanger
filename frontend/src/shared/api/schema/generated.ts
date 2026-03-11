@@ -55,58 +55,7 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/users/by-username": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        /** Get user by username */
-        get: operations["getUserByUsername"];
-        put?: never;
-        post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/users/search": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        /** Search users by username */
-        get: operations["searchUsers"];
-        put?: never;
-        post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/chats": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        /** Get chats of the authenticated user */
-        get: operations["getUserChats"];
-        put?: never;
-        post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/messages/direct": {
+    "/auth/refresh": {
         parameters: {
             query?: never;
             header?: never;
@@ -115,8 +64,8 @@ export interface paths {
         };
         get?: never;
         put?: never;
-        /** Send direct message */
-        post: operations["sendDirectMessage"];
+        /** Refresh access token */
+        post: operations["refreshToken"];
         delete?: never;
         options?: never;
         head?: never;
@@ -138,8 +87,11 @@ export interface components {
             id: number;
             email: string;
             username: string;
-            /** Format: date-time */
-            createdAt: string;
+            publicKey: string;
+        };
+        AuthResponse: {
+            accessToken?: string;
+            user?: components["schemas"]["UserResponse"];
         };
         Error: {
             message: string;
@@ -151,71 +103,15 @@ export interface components {
             /** Format: password */
             password: string;
         };
-        AuthResponse: {
-            token: string;
+        RefreshResponse: {
+            accessToken: string;
         };
-        User: {
-            id?: number;
-            email?: string;
-            username?: string;
-            publicKey?: string | null;
-            /** Format: date-time */
-            createdAt?: string;
-        };
-        ChatParticipant: {
-            id?: string;
-            user?: components["schemas"]["User"];
-        };
-        LastMessage: {
-            id?: string;
-            ciphertext?: string;
-            senderId?: number;
-            /** Format: date-time */
-            createdAt?: string;
-        };
-        Chat: {
-            /** Format: uuid */
-            id?: string;
-            /** Format: date-time */
-            createdAt?: string;
-            participants?: components["schemas"]["ChatParticipant"][];
-            messages?: components["schemas"]["LastMessage"][];
-        };
-        Message: {
-            id?: string;
-            ciphertext?: string;
-            encryptedKey?: string;
-            parentMessageId?: string | null;
-            senderId?: number;
-            chatId?: string;
-            /** Format: date-time */
-            createdAt?: string;
-            /** Format: date-time */
-            updatedAt?: string;
-            isEdited?: boolean;
-        };
+        /** @description Unauthorized */
+        UnauthorizedError: unknown;
     };
     responses: {
         /** @description Bad request */
         BadRequestError: {
-            headers: {
-                [name: string]: unknown;
-            };
-            content: {
-                "application/json": components["schemas"]["Error"];
-            };
-        };
-        /** @description Resource not found */
-        NotFoundError: {
-            headers: {
-                [name: string]: unknown;
-            };
-            content: {
-                "application/json": components["schemas"]["Error"];
-            };
-        };
-        /** @description Unauthorized */
-        UnauthorizedError: {
             headers: {
                 [name: string]: unknown;
             };
@@ -250,7 +146,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["UserResponse"];
+                    "application/json": components["schemas"]["AuthResponse"];
                 };
             };
             400: components["responses"]["BadRequestError"];
@@ -299,54 +195,7 @@ export interface operations {
             };
         };
     };
-    getUserByUsername: {
-        parameters: {
-            query: {
-                username: string;
-            };
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description User found */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["User"];
-                };
-            };
-            404: components["responses"]["NotFoundError"];
-        };
-    };
-    searchUsers: {
-        parameters: {
-            query: {
-                query: string;
-                limit?: number;
-            };
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description Users found */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["User"][];
-                };
-            };
-            400: components["responses"]["BadRequestError"];
-        };
-    };
-    getUserChats: {
+    refreshToken: {
         parameters: {
             query?: never;
             header?: never;
@@ -355,46 +204,24 @@ export interface operations {
         };
         requestBody?: never;
         responses: {
-            /** @description List of user's chats */
+            /** @description New access token */
             200: {
                 headers: {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["Chat"][];
+                    "application/json": components["schemas"]["RefreshResponse"];
                 };
             };
-            401: components["responses"]["UnauthorizedError"];
-        };
-    };
-    sendDirectMessage: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        requestBody: {
-            content: {
-                "application/json": {
-                    recipientId: number;
-                    ciphertext: string;
-                    encryptedKey: string;
-                    parentMessageId?: string | null;
-                };
-            };
-        };
-        responses: {
-            /** @description Message sent */
-            201: {
+            /** @description Refresh token invalid or expired */
+            401: {
                 headers: {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["Message"];
+                    "application/json": components["schemas"]["UnauthorizedError"];
                 };
             };
-            400: components["responses"]["BadRequestError"];
         };
     };
 }
