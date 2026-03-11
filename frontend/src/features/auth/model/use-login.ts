@@ -1,4 +1,3 @@
-import { SetStateAction } from "react"
 import { useNavigate } from "react-router-dom"
 import { toast } from "sonner"
 
@@ -7,18 +6,22 @@ import { useSession } from "@/shared/model"
 import { ROUTES } from "@/shared/model/routes"
 import { publicRqClient } from "@/shared/api/instance.api"
 
-export function useSignin() {
+export function useLogin() {
 	const navigate = useNavigate()
 
 	const session = useSession()
 	const signinMutation = publicRqClient.useMutation("post", "/auth/login", {
 		onSuccess(data) {
-			session.signin({})
-			navigate(ROUTES.HOME)
+			if (data.accessToken) {
+				session.login(data.accessToken)
+				navigate(ROUTES.HOME)
+			} else {
+				toast.error("В ответе отсутствует токен доступа.")
+			}
 		},
 	})
 
-	const signin = (data: ApiSchemas["LoginRequest"]) => {
+	const login = (data: ApiSchemas["LoginRequest"]) => {
 		signinMutation.mutate({ body: data })
 	}
 
@@ -27,7 +30,7 @@ export function useSignin() {
 		: undefined
 
 	return {
-		signin,
+		login,
 		isPending: signinMutation.isPending,
 		errorMessage,
 	}
