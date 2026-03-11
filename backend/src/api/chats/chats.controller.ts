@@ -1,17 +1,12 @@
-import { FastifyRequest, FastifyReply } from "fastify"
-import { ChatService } from "./chats.service"
+import { ChatsService } from "./chats.service"
+import { FastifyReply, FastifyRequest } from "fastify"
 
-type AuthRequest<Params = any> = FastifyRequest<{
-	Params: Params
-	User: { userId: string }
-}>
+export class ChatsController {
+	constructor(private readonly chatsService: ChatsService) {}
 
-export class ChatController {
-	constructor(private readonly chatService: ChatService) {}
-
-	public getUserChats = async (req: AuthRequest, reply: FastifyReply) => {
+	public async getChatsByUserId(req: FastifyRequest, reply: FastifyReply) {
 		const userId = (req as any).user.userId
-		const chats = await this.chatService.getUserChats(userId)
+		const chats = await this.chatsService.getUserChatsById(userId)
 		reply.send(chats)
 	}
 }

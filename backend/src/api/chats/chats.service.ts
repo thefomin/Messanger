@@ -1,38 +1,47 @@
 import { PrismaService } from "@/infra/prisma"
 
-export class ChatService {
-	/**
-	 * Находит приватный чат между двумя пользователями
-	 */
-	public async findPrivateChat(userA: number, userB: number) {
-		return PrismaService.chat.findFirst({
+export class ChatsService {
+	public async getOrCreatePrivateChat(user1: number, user2: number) {
+		const [minId, maxId] = user1 < user2 ? [user1, user2] : [user2, user1]
+
+		// Ищем чат, где ровно эти два участника
+		const chat = await PrismaService.chat.findFirst({
 			where: {
-				participants: {
-					every: { userId: { in: [userA, userB] } },
-				},
+				AND: [
+					{ participants: { some: { userId: minId } } },
+					{ participants: { some: { userId: maxId } } },
+				],
 			},
 			include: { participants: true },
 		})
-	}
 
-	/**
-	 * Создаёт чат с указанными участниками
-	 */
-	public async createChat(userIds: number[]) {
+		if (chat) return chat
+
+		// Создаём новый чат
 		return PrismaService.chat.create({
 			data: {
 				participants: {
-					create: userIds.map((id) => ({ userId: id })),
+					create: [{ userId: minId }, { userId: maxId }],
 				},
 			},
 			include: { participants: true },
 		})
 	}
 
-	/**
-	 * Получение чатов пользователя
-	 */
-	async getUserChats(userId: number) {
+	async getChatById(chatId: string) {
+		return PrismaService.chat.findUnique({
+			where: { id: chatId },
+			include: { participants: true },
+		})
+	}
+
+	public getChatsByUserId(userId: number) {
+		return PrismaService.chatParticipant.findMany({
+			where: { userId },
+		})
+	}
+
+	async getUserChatsById(userId: number) {
 		return PrismaService.chat.findMany({
 			where: {
 				participants: {
@@ -43,6 +52,11 @@ export class ChatService {
 			},
 			include: {
 				participants: {
+					where: {
+						userId: {
+							not: userId,
+						},
+					},
 					include: {
 						user: {
 							select: {
@@ -55,6 +69,12 @@ export class ChatService {
 				messages: {
 					orderBy: {
 						createdAt: "desc",
+					},
+					select: {
+						id: true,
+						ciphertext: true,
+						createdAt: true,
+						encryptedKey: true,
 					},
 					take: 1,
 				},
