@@ -3,10 +3,10 @@ import "react-router-dom"
 export const ROUTES = {
 	HOME: "/",
 	PROFILE: "/:id",
-	CHATS: "/chats",
-	CHAT_ID: "/chats/:chat_id",
+	RECIPIENT_ID: "/:recipientId",
 	REGISTER: "/auth/register",
 	LOGIN: "/auth/login",
+	RESET_PASSWORD: "/auth/reset-password",
 	TERMS: "/terms",
 	PRIVACY: "/privacy",
 } as const
@@ -15,8 +15,8 @@ export type PathParams = {
 	[ROUTES.PROFILE]: {
 		id: number
 	}
-	[ROUTES.CHAT_ID]: {
-		chat_id: string
+	[ROUTES.RECIPIENT_ID]: {
+		recipientId: string
 	}
 }
 
