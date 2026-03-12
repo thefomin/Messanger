@@ -8,7 +8,6 @@ import { DateSeparator, StickyDateSeparator } from "./ui/date-separator"
 import { ChatHeader } from "./ui/header"
 import { useChatData } from "./model/use-chat-data"
 import { useCurrentScrollDay } from "./model/use-current-day-scroll"
-import { useGetChatUser } from "./model/use-get-chat-user"
 
 export function ChatPage() {
 	const { recipientId } = useParams<PathParams[typeof ROUTES.RECIPIENT_ID]>()
@@ -16,10 +15,11 @@ export function ChatPage() {
 	const [text, setText] = useState("")
 	const messagesEndRef = useRef<HTMLDivElement | null>(null)
 	const messagesContainerRef = useRef<HTMLDivElement | null>(null)
-	const { messages, sendMessage, isConnected, isMyMessage } = useChatData({
-		recipientId: Number(recipientId),
-	})
-	const { user } = useGetChatUser(recipientId!)
+	const { messages, sendMessage, isConnected, isMyMessage, user } = useChatData(
+		{
+			recipientId: Number(recipientId),
+		},
+	)
 	console.log("user " + JSON.stringify(user))
 	useEffect(() => {
 		messagesEndRef.current?.scrollIntoView({ behavior: "smooth" })
