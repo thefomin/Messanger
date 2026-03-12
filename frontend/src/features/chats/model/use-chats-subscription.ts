@@ -1,308 +1,176 @@
-import { useEffect, useRef, useCallback } from "react"
-import { useSession } from "@/shared/model"
+import { useRef, useCallback, useState } from "react"
 import { queryClient } from "@/shared/api"
 import {
-	ApiMessageDto,
 	ChatHistoryPayload,
 	MessageDto,
 	WebSocketEventType,
 } from "./websocket.types"
-import { ChatPreviewDto, ChatsListPayload, ChatUserDto } from "./chats.types"
-
-interface WebSocketEvent {
-	type: WebSocketEventType
-	requestId?: string
-	payload: any
-}
-
-const toMessageDto = (data: ApiMessageDto): MessageDto | null => {
-	if (
-		!data.id ||
-		!data.senderId ||
-		!data.ciphertext ||
-		!data.encryptedKey ||
-		!data.createdAt
-	) {
-		console.warn("Invalid message data:", data)
-		return null
-	}
-
-	return {
-		id: data.id,
-		senderId: data.senderId,
-		ciphertext: data.ciphertext,
-		encryptedKey: data.encryptedKey,
-		parentMessageId: data.parentMessageId,
-		createdAt: data.createdAt,
-		isEdited: data.isEdited,
-		chatId: data.chatId,
-	}
-}
-
-const updateChatPreview = (chatId: string, newMessage: MessageDto) => {
-	console.log(`🔄 Updating chat preview for chat ${chatId}`, newMessage)
-	queryClient.setQueryData<ChatPreviewDto[]>(["chats"], (old = []) => {
-		console.log("Old chats:", old)
-		const updated = old.map((chat) => {
-			if (chat.id !== chatId) return chat
-			return {
-				...chat,
-				messages: [
-					{
-						id: newMessage.id,
-						ciphertext: newMessage.ciphertext,
-						createdAt: newMessage.createdAt,
-						encryptedKey: newMessage.encryptedKey,
-					},
-				],
-			}
-		})
-		console.log("New chats:", updated)
-		return updated
-	})
-}
+import { ChatPreviewDto, ChatUserDto } from "./chats.types"
+import { MessageSchema } from "../schemas/message.schema"
+import {
+	useWebSocketContext,
+	useWebSocketSubscription,
+} from "@/features/websocket/webscoket-provider"
 
 export const useChatsSubscription = ({
 	recipientId,
-	onChatReady,
 	onSearchResult,
 }: {
 	recipientId?: number
-	onChatReady?: (chatId: string) => void
 	onSearchResult?: (users: ChatUserDto[]) => void
 }) => {
-	const { token } = useSession()
-	const ws = useRef<WebSocket | null>(null)
+	const { sendMessage, isConnected } = useWebSocketContext()
+	const [chatIdState, setChatIdState] = useState<string | null>(null)
 	const chatIdRef = useRef<string | null>(null)
-	const requestIdCounter = useRef(0)
+	const recipientIdRef = useRef<number | null>(recipientId ?? null)
+	const handleChatReady = useCallback(
+		(payload: any) => {
+			console.log("✅ Authenticated, userId:", payload.userId)
+			sendMessage(WebSocketEventType.GET_CHATS, {})
 
-	const nextRequestId = useCallback(() => {
-		requestIdCounter.current += 1
-		return `req_${requestIdCounter.current}`
-	}, [])
-
-	useEffect(() => {
-		if (!token) return
-
-		ws.current = new WebSocket("ws://localhost:3000/api/v1/ws")
-
-		ws.current.onopen = () => {
-			console.log("🔌 WebSocket connected")
-			ws.current?.send(
-				JSON.stringify({
-					type: WebSocketEventType.AUTH,
-					payload: { token },
-				}),
-			)
-		}
-
-		ws.current.onmessage = (event) => {
-			try {
-				const { type, payload, requestId }: WebSocketEvent = JSON.parse(
-					event.data,
-				)
-				console.log("📩 WS event:", type, payload, requestId)
-
-				switch (type) {
-					case WebSocketEventType.CHAT_READY: {
-						console.log("✅ Authenticated, userId:", payload.userId)
-
-						// 1. Запрос списка чатов
-						ws.current?.send(
-							JSON.stringify({
-								type: WebSocketEventType.GET_CHATS,
-								requestId: nextRequestId(),
-								payload: {},
-							}),
-						)
-						if (recipientId) {
-							const createChatReqId = nextRequestId()
-							ws.current?.send(
-								JSON.stringify({
-									type: WebSocketEventType.CREATE_OR_GET_CHAT,
-									requestId: createChatReqId,
-									payload: { recipientId },
-								}),
-							)
-						}
-						break
-					}
-
-					case WebSocketEventType.CHAT_CREATED: {
-						const chatId = payload.chatId
-						chatIdRef.current = chatId
-						console.log("💬 Chat created/retrieved:", chatId)
-						onChatReady?.(chatId)
-
-						if (recipientId) {
-							ws.current?.send(
-								JSON.stringify({
-									type: WebSocketEventType.GET_USER_BY_ID, // было SEARCH_USERS
-									requestId: nextRequestId(),
-									payload: { userId: recipientId }, // только userId, limit не нужен
-								}),
-							)
-						}
-						break
-					}
-
-					case WebSocketEventType.CHAT_HISTORY: {
-						const historyPayload = payload as ChatHistoryPayload
-						console.log("📜 Received chat history:", payload.messages)
-						const chatId = chatIdRef.current
-						if (!chatId) break
-
-						const messages = historyPayload.messages
-							.map(toMessageDto)
-							.filter((msg): msg is MessageDto => msg !== null)
-
-						queryClient.setQueryData(["chatMessages", chatId], messages)
-						break
-					}
-
-					case WebSocketEventType.CHATS_LIST: {
-						const chatsPayload = payload as ChatsListPayload
-						console.log("📜 Received chats list:", chatsPayload.chats)
-						queryClient.setQueryData(["chats"], chatsPayload.chats)
-
-						break
-					}
-
-					case WebSocketEventType.MESSAGE_CREATED: {
-						console.log("📝 Processing MESSAGE_CREATED:", payload)
-						const newMessage = toMessageDto(payload)
-						if (!newMessage) {
-							console.warn("❌ Failed to convert message")
-							break
-						}
-
-						// Определяем chatId из сообщения или из рефа
-						const chatId = payload.chatId || chatIdRef.current
-						if (!chatId) {
-							console.warn("❌ No chatId available for MESSAGE_CREATED")
-							break
-						}
-
-						// Обновляем кэш сообщений для этого чата
-						queryClient.setQueryData<MessageDto[]>(
-							["chatMessages", chatId],
-							(old = []) => {
-								if (old.some((msg) => msg.id === newMessage.id)) {
-									return old // уже есть, не добавляем
-								}
-								return [...old, newMessage]
-							},
-						)
-
-						updateChatPreview(chatId, newMessage)
-						// Инвалидируем список чатов, так как последнее сообщение изменилось
-						// queryClient.invalidateQueries({queryKey:['chatMessages']})
-						break
-					}
-
-					case WebSocketEventType.USERS_SEARCH_RESULT: {
-						const users = payload.users as ChatUserDto[]
-						console.log("🔍 Search results:", users)
-						onSearchResult?.(users)
-						break
-					}
-
-					case WebSocketEventType.GET_USER_BY_ID: {
-						const user = payload.user as ChatUserDto
-						if (user) {
-							queryClient.setQueryData(["chatUser", Number(user.id)], user)
-							console.log("👤 User saved to cache via USER_DATA:", user)
-						}
-						break
-					}
-					case WebSocketEventType.INVALIDATE: {
-						// Инвалидация кэша по сущностям
-						if (payload.entity.includes("chats")) {
-							// queryClient.invalidateQueries({ queryKey: ["chats"] })
-						}
-						if (payload.entity.includes("messages") && chatIdRef.current) {
-							// queryClient.invalidateQueries({
-							// 	queryKey: ["chatMessages", chatIdRef.current],
-							// })
-						}
-						break
-					}
-
-					case WebSocketEventType.ERROR: {
-						console.error("❌ WS error:", payload.message)
-						// Можно показать уведомление пользователю
-						break
-					}
-
-					default:
-						console.log("Unhandled event type:", type)
-				}
-			} catch (err) {
-				console.error("❌ WS message error:", err)
+			if (recipientId) {
+				sendMessage(WebSocketEventType.CREATE_OR_GET_CHAT, { recipientId })
 			}
-		}
+		},
+		[recipientId, sendMessage],
+	)
+	useWebSocketSubscription(WebSocketEventType.CHAT_READY, handleChatReady)
 
-		ws.current.onclose = (event) => {
-			console.log("🔌 WebSocket disconnected:", event.code, event.reason)
-		}
+	const handleChatCreated = useCallback(
+		(payload: any) => {
+			chatIdRef.current = payload.chatId
+			console.log("💬 Chat created:", payload.chatId)
+			setChatIdState(payload.chatId)
+			if (recipientId) {
+				sendMessage(WebSocketEventType.GET_USER_BY_ID, { userId: recipientId })
+			}
 
-		ws.current.onerror = (error) => {
-			console.error("🔌 WebSocket error:", error)
-		}
+			sendMessage(WebSocketEventType.GET_CHAT_HISTORY, {
+				chatId: payload.chatId,
+			})
+		},
+		[recipientId, sendMessage],
+	)
+	useWebSocketSubscription(WebSocketEventType.CHAT_CREATED, handleChatCreated)
 
-		return () => {
-			ws.current?.close()
-		}
-	}, [token, recipientId, onChatReady, nextRequestId])
+	const handleChatsList = useCallback((payload: any) => {
+		queryClient.setQueryData(["chats"], payload.chats as ChatPreviewDto[])
+	}, [])
+	useWebSocketSubscription(WebSocketEventType.CHATS_LIST, handleChatsList)
 
-	const sendMessage = useCallback(
+	const handleChatHistory = useCallback((payload: any) => {
+		const historyMessage = payload as ChatHistoryPayload
+		const messages = historyMessage.messages
+			.map((m) => MessageSchema.safeParse(m))
+			.filter((r) => r.success)
+			.map((r) => r.data)
+
+		if (!chatIdRef.current) return
+		queryClient.setQueryData(["chatMessages", chatIdRef.current], messages)
+	}, [])
+	useWebSocketSubscription(WebSocketEventType.CHAT_HISTORY, handleChatHistory)
+
+	const handleMessageCreated = useCallback((payload: any) => {
+		const parsed = MessageSchema.safeParse(payload)
+		if (!parsed.success) return
+
+		const newMessage = parsed.data
+		const targetChatId = payload.chatId || chatIdRef.current
+		if (!targetChatId) return
+
+		queryClient.setQueryData<MessageDto[]>(
+			["chatMessages", targetChatId],
+			(old = []) => {
+				if (old.some((m) => m.id === newMessage.id)) return old
+				return [...old, newMessage]
+			},
+		)
+
+		queryClient.setQueryData<ChatPreviewDto[]>(["chats"], (old = []) =>
+			old.map((chat) =>
+				chat.id === targetChatId
+					? {
+							...chat,
+							messages: [
+								{
+									id: newMessage.id,
+									ciphertext: newMessage.ciphertext,
+									createdAt: newMessage.createdAt,
+									encryptedKey: newMessage.encryptedKey,
+								},
+							],
+						}
+					: chat,
+			),
+		)
+	}, [])
+	useWebSocketSubscription(
+		WebSocketEventType.MESSAGE_CREATED,
+		handleMessageCreated,
+	)
+
+	const handleSearchResult = useCallback(
+		(payload: any) => onSearchResult?.(payload.users),
+		[onSearchResult],
+	)
+	useWebSocketSubscription(
+		WebSocketEventType.USERS_SEARCH_RESULT,
+		handleSearchResult,
+	)
+
+	const handleUserById = useCallback((payload: any) => {
+		const user = payload.user as ChatUserDto
+		if (!user) return
+		queryClient.setQueryData(["chatUser", String(user.id)], user)
+	}, [])
+	useWebSocketSubscription(WebSocketEventType.GET_USER_BY_ID, handleUserById)
+
+	const handleError = useCallback((payload: any) => {
+		console.error("❌ WS error:", payload.message)
+	}, [])
+	useWebSocketSubscription(WebSocketEventType.ERROR, handleError)
+
+	const sendChatMessage = useCallback(
 		(
 			ciphertext: string,
 			encryptedKey: string,
 			parentMessageId?: string | null,
 		) => {
-			if (!ws.current || !chatIdRef.current) {
-				console.error("WebSocket not ready or chatId missing")
-				return
-			}
-
-			ws.current.send(
-				JSON.stringify({
-					type: WebSocketEventType.SEND_MESSAGE,
-					requestId: nextRequestId(),
-					payload: {
-						chatId: chatIdRef.current,
-						ciphertext,
-						encryptedKey,
-						parentMessageId: parentMessageId ?? null,
-					},
-				}),
-			)
+			if (!chatIdRef.current) return
+			sendMessage(WebSocketEventType.SEND_MESSAGE, {
+				chatId: chatIdRef.current,
+				ciphertext,
+				encryptedKey,
+				parentMessageId: parentMessageId ?? null,
+			})
 		},
-		[nextRequestId],
+		[sendMessage],
 	)
 
 	const send = useCallback(
-		(type: WebSocketEventType, payload: any, requestId?: string) => {
-			if (!ws.current || ws.current.readyState !== WebSocket.OPEN) {
-				console.error("WebSocket not ready")
-				return
-			}
-			ws.current.send(
-				JSON.stringify({
-					type,
-					requestId: requestId ?? nextRequestId(),
-					payload,
-				}),
-			)
+		(event: string, payload?: any) => {
+			sendMessage(event as WebSocketEventType, payload)
 		},
-		[nextRequestId],
+		[sendMessage],
+	)
+
+	const setRecipient = useCallback(
+		(newRecipientId: number) => {
+			chatIdRef.current = null
+			setChatIdState(null)
+			recipientIdRef.current = newRecipientId
+			sendMessage(WebSocketEventType.CREATE_OR_GET_CHAT, {
+				recipientId: newRecipientId,
+			})
+		},
+		[sendMessage],
 	)
 
 	return {
-		sendMessage,
+		sendMessage: sendChatMessage,
 		send,
-		isConnected: ws.current?.readyState === WebSocket.OPEN,
-		chatId: chatIdRef.current,
+		setRecipient,
+		isConnected,
+		chatId: chatIdState,
 	}
 }
