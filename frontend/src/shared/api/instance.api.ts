@@ -6,17 +6,19 @@ import { useSession } from "../model/session"
 
 export const fetchClient = createFetchClient<ApiPaths>({
 	baseUrl: CONFIG.API_BASE_URL,
+	credentials: "include",
 })
 export const rqClient = createClient(fetchClient)
 
 export const publicFetchClient = createFetchClient<ApiPaths>({
 	baseUrl: CONFIG.API_BASE_URL,
+	credentials: "include",
 })
 export const publicRqClient = createClient(publicFetchClient)
 
 fetchClient.use({
 	async onRequest({ request }) {
-		const token = await useSession.getState().session
+		const token = await useSession.getState().token
 
 		if (token) {
 			request.headers.set("Authorization", `Bearer ${token}`)
