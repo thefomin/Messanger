@@ -1,10 +1,11 @@
-import { createBrowserRouter } from "react-router-dom"
+import { createBrowserRouter, Outlet } from "react-router-dom"
 
 import { ROUTES } from "@/shared/model/routes"
 
 import { App } from "./app"
 import { Providers } from "./providers"
 import { ProtectedRoute } from "./protected-route"
+import { ChatsProvider } from "@/features/chats/model/chats-provider"
 
 export const router = createBrowserRouter([
 	{
@@ -25,12 +26,23 @@ export const router = createBrowserRouter([
 				),
 				children: [
 					{
-						path: ROUTES.HOME,
-						lazy: () => import("@/features/chats/chats.page"),
-					},
-					{
-						path: ROUTES.RECIPIENT_ID,
-						lazy: () => import("@/features/chats/chats.page"),
+						element: (
+							<>
+								<ChatsProvider>
+									<Outlet />
+								</ChatsProvider>
+							</>
+						),
+						children: [
+							{
+								path: ROUTES.HOME,
+								lazy: () => import("@/features/chats/chats.page"),
+							},
+							{
+								path: ROUTES.RECIPIENT_ID,
+								lazy: () => import("@/features/chats/chats.page"),
+							},
+						],
 					},
 				],
 			},
