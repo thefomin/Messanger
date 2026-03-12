@@ -1,20 +1,27 @@
-import { useState, useCallback } from "react"
+import { useCallback, useEffect } from "react"
 import { useSession } from "@/shared/model"
 import { useChatsSubscription } from "./use-chats-subscription"
 import { MessageDto } from "./websocket.types"
 import { useGetMessages } from "./uss-get-messages"
+import { useGetChatUser } from "./use-get-chat-user"
 
 export const useChatData = ({ recipientId }: { recipientId: number }) => {
-	const [chatId, setChatId] = useState<string | null>(null)
 	const { session } = useSession()
-
-	const { sendMessage: wsSendMessage, isConnected } = useChatsSubscription({
+	console.log("recipientId chatdata " + recipientId)
+	const {
+		sendMessage: wsSendMessage,
+		isConnected,
+		chatId,
+		setRecipient,
+	} = useChatsSubscription({
 		recipientId,
-		onChatReady: setChatId,
 	})
 
-	const { messages } = useGetMessages({ chatId: chatId! })
+	const { messages } = useGetMessages({
+		chatId: chatId ?? "",
+	})
 
+	const { user } = useGetChatUser({ recipientId: recipientId.toString() ?? "" })
 	const sendMessage = useCallback(
 		(
 			ciphertext: string,
@@ -34,11 +41,14 @@ export const useChatData = ({ recipientId }: { recipientId: number }) => {
 		[session?.userId],
 	)
 
+	useEffect(() => {
+		setRecipient(Number(recipientId))
+	}, [recipientId, setRecipient])
 	return {
 		messages,
 		sendMessage,
 		isConnected,
-		chatId,
 		isMyMessage,
+		user,
 	}
 }
