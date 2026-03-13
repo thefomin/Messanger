@@ -1,3 +1,6 @@
+import { queryClient } from "@/shared/api"
+import { ChatUserDto } from "./chats.types"
+
 export enum WebSocketEventType {
 	AUTH = "AUTH",
 	CREATE_OR_GET_CHAT = "CREATE_OR_GET_CHAT",
@@ -43,4 +46,27 @@ export interface ApiMessageDto {
 	createdAt?: string
 	isEdited?: boolean
 	chatId?: string
+}
+
+export interface WebSocketEvent {
+	type: WebSocketEventType
+	requestId?: string
+	payload: any
+}
+
+export interface UseChatsSubscriptionProps {
+	recipientId?: number
+	onChatReady?: (chatId: string) => void
+	onSearchResult?: (users: ChatUserDto[]) => void
+}
+
+export interface WSHandlersDeps {
+	chatIdRef: React.MutableRefObject<string | null>
+	queryClient: typeof queryClient
+	recipientId?: number
+	callbacks?: {
+		onChatReady?: (chatId: string) => void
+		onSearchResult?: (users: ChatUserDto[]) => void
+		refreshToken?: () => void
+	}
 }

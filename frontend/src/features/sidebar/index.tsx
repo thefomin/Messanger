@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from "react"
+import { useState, useEffect } from "react"
 import { Search } from "lucide-react"
 import { Link, useParams } from "react-router-dom"
 import { PathParams, ROUTES } from "@/shared/model"
@@ -12,21 +12,16 @@ import { useDebounce } from "use-debounce"
 export const Sidebar = () => {
 	const { recipientId } = useParams<PathParams[typeof ROUTES.RECIPIENT_ID]>()
 	const { chats } = useGetChatList()
-
-	// Состояния для поиска
+	console.log("chats " + JSON.stringify(chats))
 	const [mode, setMode] = useState<"chats" | "search">("chats")
 	const [searchQuery, setSearchQuery] = useState("")
 	const [debouncedQuery] = useDebounce(searchQuery, 300)
 	const [searchResults, setSearchResults] = useState<ChatUserDto[]>([])
 
-	// Подписка на WebSocket (без recipientId – только для получения событий)
 	const { send } = useChatsSubscription({
-		onSearchResult: useCallback((users: ChatUserDto[]) => {
-			setSearchResults(users)
-		}, []),
+		onSearchResult: (users) => setSearchResults(users),
 	})
 
-	// Отправка поискового запроса при изменении debouncedQuery
 	useEffect(() => {
 		if (debouncedQuery.trim()) {
 			send(WebSocketEventType.SEARCH_USERS, {
@@ -40,7 +35,6 @@ export const Sidebar = () => {
 		}
 	}, [debouncedQuery, send])
 
-	// Ручное переключение режима при фокусе/потере фокуса
 	const handleFocus = () => {
 		if (searchQuery.trim()) setMode("search")
 	}

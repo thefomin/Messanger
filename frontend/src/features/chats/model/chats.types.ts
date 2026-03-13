@@ -27,4 +27,5 @@ export interface ChatsListPayload {
 export interface ChatUserDto {
 	id: number
 	username: string
+	publicKey?: string | null
 }

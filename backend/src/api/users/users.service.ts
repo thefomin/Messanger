@@ -11,7 +11,7 @@ export class UsersService {
 	public async getUserById(userId: number) {
 		const user = await PrismaService.user.findUnique({
 			where: { id: userId },
-			select: { id: true, username: true },
+			select: { id: true, username: true, publicKey: true },
 		})
 
 		return user

@@ -39,7 +39,7 @@ export const useSession = createGStore(() => {
 		const session = jwtDecode<Session>(token)
 		const now = Date.now() / 1000
 		console.log("Current time (s):", now, "Token exp:", session.exp)
-		const EXPIRY_BUFFER = 30
+		const EXPIRY_BUFFER = 60 // seconds
 		if (session.exp - EXPIRY_BUFFER < now) {
 			console.log("Token expired, attempting refresh")
 			if (!refreshTokenPromise) {
